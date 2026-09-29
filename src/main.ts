@@ -8,7 +8,7 @@ import { h, iconButton, notice, setIcon } from "./dom";
 import { LANGS, Lang, detectLang, isLang, lang, setLang, t } from "./i18n";
 import {
   ApiUsage, DEFAULTS, Hit, Rule, Settings, Tally, Usage, Violation, activate, activeField, clearHits, closeActive,
-  defaultRules, emptyUsage, evaluate, hitField, lintExtensions, newRule, ruleLabel, sentenceField, setAbbreviations,
+  defaultRules, emptyUsage, evaluate, hitField, lintExtensions, missingDefaultRules, newRule, ruleLabel, sentenceField, setAbbreviations,
   setHits, stepActive,
 } from "./lint";
 import { SAMPLE } from "./sample";
@@ -403,7 +403,14 @@ class LintPanel {
     const el = this.rulesEl;
     el.replaceChildren();
     const { app } = this;
-    const commit = () => { app.saveSettings(); app.render(); };
+    // Renaming a rule changes which defaults are missing without rebuilding, so every commit updates this button.
+    const addDefaults = h(null, "button", { cls: "jev-add-rule", attrs: { type: "button" } });
+    const updateAddDefaults = () => {
+      const n = missingDefaultRules(app.settings.rules).length;
+      addDefaults.hidden = !n;
+      addDefaults.textContent = t.addDefaultRules(n);
+    };
+    const commit = () => { app.saveSettings(); app.render(); updateAddDefaults(); };
     if (!app.settings.rules.length) h(el, "div", { cls: "jev-panel-empty", text: t.noRulesYet });
     for (const rule of app.settings.rules) {
       ruleEditor(el, rule, commit, () => {
@@ -418,6 +425,13 @@ class LintPanel {
       this.renderRules();
       el.querySelector<HTMLTextAreaElement>(".jev-rule-editor:last-of-type textarea")?.focus();
     });
+    el.append(addDefaults);
+    addDefaults.addEventListener("click", () => {
+      app.settings.rules.push(...missingDefaultRules(app.settings.rules));
+      commit();
+      this.renderRules();
+    });
+    updateAddDefaults();
   }
 
   private renderUsage() {

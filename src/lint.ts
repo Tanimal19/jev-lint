@@ -47,8 +47,14 @@ const DEFAULT_RULES: [name: string, condition: string][] = [
   ["vague", "Uses vague or unspecific wording, leaving the reader unsure what exactly is meant"],
 ];
 
-export const defaultRules = () =>
-  DEFAULT_RULES.reduce<Rule[]>((rules, [name, condition]) => [...rules, { ...newRule(rules), name, condition }], []);
+// Default rules whose names aren't among `existing`, colored to avoid the colors already in use.
+export function missingDefaultRules(existing: Rule[]): Rule[] {
+  const names = new Set(existing.map((r) => r.name));
+  return DEFAULT_RULES.filter(([name]) => !names.has(name)).reduce<Rule[]>(
+    (added, [name, condition]) => [...added, { ...newRule([...existing, ...added]), name, condition }], []);
+}
+
+export const defaultRules = () => missingDefaultRules([]);
 
 export const ruleLabel = (r: Rule) => r.name || r.condition || t.emptyRule;
 
